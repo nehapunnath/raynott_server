@@ -10,7 +10,7 @@ const { signInWithEmailAndPassword } = require('firebase/auth');
 //   databaseURL: "https://raynott-98db5.firebaseio.com"
 // });
 
-const admin = require('firebase-admin');
+// const admin = require('firebase-admin');
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
