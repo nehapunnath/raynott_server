@@ -25,8 +25,8 @@ if (!admin.apps.length) {
       credential: admin.credential.cert(serviceAccount),
       databaseURL: process.env.FIREBASE_DATABASE_URL,
       storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-      // databaseURL: 'https://raynott-98db5-default-rtdb.firebaseio.com/',
-      // storageBucket: 'raynott-98db5.firebasestorage.app',
+      // databaseURL: 'https://raynott-98db5-default-rtdb.firebaseio.com',
+      // storageBucket: 'raynott-98db5.firebasestorage.app'
     });
 
     // Initialize database and storage
