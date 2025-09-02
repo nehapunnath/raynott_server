@@ -28,7 +28,7 @@ const uploadToFirebase = async (file, folder) => {
     return null;
   }
 
-  // Check if storage is properly initialized
+ 
   if (!storage) {
     console.error('Firebase Storage bucket is not initialized');
     throw new Error('Storage service not available');
@@ -36,7 +36,7 @@ const uploadToFirebase = async (file, folder) => {
 
   return new Promise((resolve, reject) => {
     const filename = `${folder}/${Date.now()}_${path.basename(file.originalname)}`;
-    const blob = storage.file(filename); // Use 'storage' instead of 'bucket'
+    const blob = storage.file(filename); 
     const blobStream = blob.createWriteStream({
       metadata: {
         contentType: file.mimetype,
