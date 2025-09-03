@@ -237,11 +237,90 @@ const deleteSchool = async (req, res) => {
     });
   }
 };
+// Get all schools with optional filtering
+const getSchoolsWithFilters = async (req, res) => {
+  try {
+    const { 
+      city, 
+      board, 
+      schoolType, 
+      maxFee, 
+      minFee,
+      gender 
+    } = req.query;
+    
+    const schoolsRef = db.ref('schools');
+    const snapshot = await schoolsRef.once('value');
+    const schools = snapshot.val();
+    
+    if (!schools) {
+      return res.status(200).json({
+        success: true,
+        data: {}
+      });
+    }
+    
+    // Filter schools based on query parameters
+    const filteredSchools = Object.keys(schools).reduce((result, key) => {
+      const school = schools[key];
+      let include = true;
+      
+      // City filter
+      if (city && school.city && school.city.toLowerCase() !== city.toLowerCase()) {
+        include = false;
+      }
+      
+      // Board filter
+      if (board && school.board && school.board.toLowerCase() !== board.toLowerCase()) {
+        include = false;
+      }
+      
+      // School type filter
+      if (schoolType && school.schoolType && school.schoolType.toLowerCase() !== schoolType.toLowerCase()) {
+        include = false;
+      }
+      
+      // Gender filter
+      if (gender && school.gender && school.gender.toLowerCase() !== gender.toLowerCase()) {
+        include = false;
+      }
+      
+      // Fee range filter
+      if (minFee && school.totalAnnualFee < parseInt(minFee)) {
+        include = false;
+      }
+      
+      if (maxFee && school.totalAnnualFee > parseInt(maxFee)) {
+        include = false;
+      }
+      
+      if (include) {
+        result[key] = school;
+      }
+      
+      return result;
+    }, {});
+    
+    res.status(200).json({
+      success: true,
+      data: filteredSchools,
+      count: Object.keys(filteredSchools).length
+    });
+  } catch (error) {
+    console.error('Error fetching filtered schools:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch schools',
+      error: error.message
+    });
+  }
+};
 
 module.exports = {
   addSchool,
   getSchools,
   getSchool,
   updateSchool,
-  deleteSchool
+  deleteSchool,
+  getSchoolsWithFilters
 };
