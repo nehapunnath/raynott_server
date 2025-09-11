@@ -34,7 +34,7 @@ upload.fields([
 
 router.delete('/admin/del-schools/:id', schoolController.deleteSchool);
 
-router.get('/getschools/filtered', schoolController.getSchoolsWithFilters); 
+router.get('/admin/getschools-filtered', schoolController.getSchoolsWithFilters) 
 
 router.post('/admin/addcolleges', 
   upload.fields([
