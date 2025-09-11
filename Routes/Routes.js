@@ -5,6 +5,7 @@ const verifyAdmin = require('../Middleware/authMiddleware');
 const schoolController = require('../Controllers/SchoolController');
 const {upload }= require('../Middleware/uploadMiddleware');
 const CollegeController=require('../Controllers/CollegeController')
+const PUCollegeController = require('../Controllers/PuCollegeController')
 
 router.post('/login', AuthController.loginAdmin);
 
@@ -60,6 +61,39 @@ router.post('/admin/college-types', CollegeController.createCollegeType);
 router.delete('/admin/college-types/:id',CollegeController.deleteCollegeType);
 
 router.get('/admin/search/colleges', CollegeController.searchColleges)
+
+// PU College routes
+router.post('/admin/addpucolleges', 
+  
+  upload.fields([
+    { name: 'collegeImage', maxCount: 1 },
+    { name: 'photos', maxCount: 6 }
+  ]), 
+  PUCollegeController.addPUCollege
+);
+
+router.get('/admin/getpucolleges', PUCollegeController.getPUColleges);
+router.get('/admin/getpucolleges/:id', PUCollegeController.getPUCollege);
+
+router.put('/admin/updatepucolleges/:id', 
+  
+  upload.fields([
+    { name: 'collegeImage', maxCount: 1 },
+    { name: 'photos', maxCount: 6 }
+  ]), 
+  PUCollegeController.updatePUCollege
+);
+
+router.delete('/admin/del-pucolleges/:id',  PUCollegeController.deletePUCollege);
+
+router.get('/admin/pucollege-types', PUCollegeController.getAllPUCollegeTypes);
+router.post('/admin/pucollege-types', PUCollegeController.createPUCollegeType);
+router.delete('/admin/pucollege-types/:id',  PUCollegeController.deletePUCollegeType);
+
+router.get('/admin/search/pucolleges', PUCollegeController.searchPUColleges);
+
+
+
 
 
 
