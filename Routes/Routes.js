@@ -6,6 +6,7 @@ const schoolController = require('../Controllers/SchoolController');
 const {upload }= require('../Middleware/uploadMiddleware');
 const CollegeController=require('../Controllers/CollegeController')
 const PUCollegeController = require('../Controllers/PuCollegeController')
+const TuitionCoachingController=require('../Controllers/TuitionCoachingController')
 
 router.post('/login', AuthController.loginAdmin);
 
@@ -91,6 +92,33 @@ router.post('/admin/pucollege-types', PUCollegeController.createPUCollegeType);
 router.delete('/admin/pucollege-types/:id',  PUCollegeController.deletePUCollegeType);
 
 router.get('/admin/search/pucolleges', PUCollegeController.searchPUColleges);
+
+// Tuition/Coaching Center routes
+router.post('/admin/addtuitioncoaching', 
+  upload.fields([
+    { name: 'centerImage', maxCount: 1 },
+    { name: 'photos', maxCount: 6 }
+  ]), 
+  TuitionCoachingController.addTuitionCoaching
+);
+
+router.get('/admin/gettuitioncoaching', TuitionCoachingController.getTuitionCoachings);
+router.get('/admin/gettuitioncoaching/:id', TuitionCoachingController.getTuitionCoaching);
+
+router.put('/admin/updatetuitioncoaching/:id', 
+  upload.fields([
+    { name: 'centerImage', maxCount: 1 },
+    { name: 'photos', maxCount: 6 }
+  ]), 
+  TuitionCoachingController.updateTuitionCoaching
+);
+
+router.delete('/admin/del-tuitioncoaching/:id', TuitionCoachingController.deleteTuitionCoaching);
+router.get('/admin/coaching-types', TuitionCoachingController.getAllCoachingTypes);
+router.post('/admin/coaching-types', TuitionCoachingController.createCoachingType);
+router.delete('/admin/coaching-types/:id', TuitionCoachingController.deleteCoachingType);
+router.get('/admin/search/tuitioncoaching', TuitionCoachingController.searchTuitionCoachings);
+
 
 
 
