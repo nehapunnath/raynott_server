@@ -7,6 +7,7 @@ const {upload }= require('../Middleware/uploadMiddleware');
 const CollegeController=require('../Controllers/CollegeController')
 const PUCollegeController = require('../Controllers/PuCollegeController')
 const TuitionCoachingController=require('../Controllers/TuitionCoachingController')
+const TeacherController=require('../Controllers/TeachersController')
 
 router.post('/login', AuthController.loginAdmin);
 
@@ -118,6 +119,18 @@ router.get('/admin/coaching-types', TuitionCoachingController.getAllCoachingType
 router.post('/admin/coaching-types', TuitionCoachingController.createCoachingType);
 router.delete('/admin/coaching-types/:id', TuitionCoachingController.deleteCoachingType);
 router.get('/admin/search/tuitioncoaching', TuitionCoachingController.searchTuitionCoachings);
+
+router.post('/admin/addteachers', upload.fields([
+  { name: 'profileImage', maxCount: 1 }
+]), TeacherController.addTeacher);
+
+router.get('/admin/teachers', TeacherController.getTeachers);
+router.get('/admin/teachers/filter', TeacherController.getTeachersWithFilters);
+router.get('/admin/get-teachers/:id', TeacherController.getTeacher);
+router.put('/admin/edit-teachers/:id', upload.fields([
+  { name: 'profileImage', maxCount: 1 }
+]), TeacherController.updateTeacher);
+router.delete('/admin/del-teachers/:id',TeacherController.deleteTeacher);
 
 
 
