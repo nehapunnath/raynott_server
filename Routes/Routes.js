@@ -125,12 +125,17 @@ router.post('/admin/addteachers', upload.fields([
 ]), TeacherController.addTeacher);
 
 router.get('/admin/teachers', TeacherController.getTeachers);
+router.get('/admin/professional-teachers', TeacherController.getProfessionalTeachers); 
+router.get('/admin/personal-mentors', TeacherController.getPersonalMentors);
+router.get('/admin/professional-teachers/:id', TeacherController.getProfessionalTeacherDetails);
+router.get('/admin/personal-mentors/:id', TeacherController.getPersonalMentorDetails);
 router.get('/admin/teachers/filter', TeacherController.getTeachersWithFilters);
 router.get('/admin/get-teachers/:id', TeacherController.getTeacher);
 router.put('/admin/edit-teachers/:id', upload.fields([
   { name: 'profileImage', maxCount: 1 }
 ]), TeacherController.updateTeacher);
 router.delete('/admin/del-teachers/:id',TeacherController.deleteTeacher);
+
 
 
 

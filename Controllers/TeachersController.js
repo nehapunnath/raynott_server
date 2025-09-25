@@ -96,6 +96,161 @@ const getTeachers = async (req, res) => {
   }
 };
 
+// Get professional teachers (School, College, PU College, Coaching Institute)
+const getProfessionalTeachers = async (req, res) => {
+  try {
+    const { city, subjects, maxHourlyRate, minHourlyRate, teachingMode } = req.query;
+    
+    const professionalTypes = ['School', 'College', 'PU College', 'Coaching Institute'];
+    const institutionTypes = professionalTypes.join(',');
+
+    // Call the existing filter function with professional institution types
+    const filteredData = await getFilteredTeachers({ 
+      city, 
+      subjects, 
+      institutionType: institutionTypes,
+      maxHourlyRate, 
+      minHourlyRate, 
+      teachingMode 
+    });
+
+    res.status(200).json({
+      success: true,
+      data: filteredData,
+      count: Object.keys(filteredData).length
+    });
+  } catch (error) {
+    console.error('Error fetching professional teachers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch professional teachers',
+      error: error.message
+    });
+  }
+};
+
+// Get personal mentors (Personal Mentor)
+const getPersonalMentors = async (req, res) => {
+  try {
+    const { city, subjects, maxHourlyRate, minHourlyRate, teachingMode } = req.query;
+    
+    const personalType = 'Personal Mentor';
+    const institutionType = personalType;
+
+    // Call the existing filter function with personal institution type
+    const filteredData = await getFilteredTeachers({ 
+      city, 
+      subjects, 
+      institutionType,
+      maxHourlyRate, 
+      minHourlyRate, 
+      teachingMode 
+    });
+
+    res.status(200).json({
+      success: true,
+      data: filteredData,
+      count: Object.keys(filteredData).length
+    });
+  } catch (error) {
+    console.error('Error fetching personal mentors:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch personal mentors',
+      error: error.message
+    });
+  }
+};
+
+const getFilteredTeachers = async (queryParams) => {
+  const { city, subjects, institutionType, maxHourlyRate, minHourlyRate, teachingMode } = queryParams;
+
+  console.log('Query Parameters:', queryParams);
+
+  const teachersRef = db.ref('teachers');
+  const snapshot = await teachersRef.once('value');
+  const teachers = snapshot.val();
+
+  console.log('Raw teachers data from Firebase:', teachers);
+
+  if (!teachers) {
+    console.log('No teachers found in database');
+    return {};
+  }
+
+  const institutionTypes = institutionType ? institutionType.toLowerCase().split(',').map(type => type.trim()) : [];
+  const subjectList = subjects ? subjects.toLowerCase().split(',').map(sub => sub.trim()) : [];
+  const teachingModes = teachingMode ? teachingMode.toLowerCase().split(',').map(mode => mode.trim()) : [];
+
+  console.log('Parsed filters:', { institutionTypes, subjectList, teachingModes });
+
+  const filteredTeachers = Object.keys(teachers).reduce((result, key) => {
+    const teacher = teachers[key];
+    let include = true;
+
+    // City filter (case-insensitive or map Bengaluru to Bangalore)
+    if (city && teacher.city) {
+      const normalizedCity = city.toLowerCase() === 'bengaluru' ? 'bangalore' : city.toLowerCase();
+      if (teacher.city.toLowerCase() !== normalizedCity) {
+        console.log(`Teacher ${key} excluded: city mismatch (${teacher.city} != ${city})`);
+        include = false;
+      }
+    }
+
+    // Subjects filter
+    if (subjectList.length > 0 && teacher.subjects) {
+      const teacherSubjects = teacher.subjects.toLowerCase().split(',').map(s => s.trim());
+      if (!subjectList.some(qSub => teacherSubjects.some(tSub => tSub.includes(qSub)))) {
+        console.log(`Teacher ${key} excluded: subjects mismatch (${teacher.subjects} not in ${subjects})`);
+        include = false;
+      }
+    }
+
+    // Institution type filter
+    if (institutionTypes.length > 0 && teacher.institutionType) {
+      if (!institutionTypes.includes(teacher.institutionType.toLowerCase().trim())) {
+        console.log(`Teacher ${key} excluded: institutionType mismatch (${teacher.institutionType} not in ${institutionTypes})`);
+        include = false;
+      }
+    }
+
+    // Teaching mode filter
+    if (teachingModes.length > 0 && teacher.teachingMode) {
+      if (!teachingModes.includes(teacher.teachingMode.toLowerCase().trim())) {
+        console.log(`Teacher ${key} excluded: teachingMode mismatch (${teacher.teachingMode} not in ${teachingModes})`);
+        include = false;
+      }
+    }
+
+    // Hourly rate range filter
+    if (minHourlyRate && teacher.hourlyRate) {
+      const rate = parseFloat(teacher.hourlyRate.replace(/[^0-9.-]+/g, ''));
+      if (isNaN(rate) || rate < parseFloat(minHourlyRate)) {
+        console.log(`Teacher ${key} excluded: minHourlyRate mismatch (${rate} < ${minHourlyRate})`);
+        include = false;
+      }
+    }
+
+    if (maxHourlyRate && teacher.hourlyRate) {
+      const rate = parseFloat(teacher.hourlyRate.replace(/[^0-9.-]+/g, ''));
+      if (isNaN(rate) || rate > parseFloat(maxHourlyRate)) {
+        console.log(`Teacher ${key} excluded: maxHourlyRate mismatch (${rate} > ${maxHourlyRate})`);
+        include = false;
+      }
+    }
+
+    if (include) {
+      console.log(`Teacher ${key} included`);
+      result[key] = teacher;
+    }
+
+    return result;
+  }, {});
+
+  console.log('Filtered teachers:', filteredTeachers);
+  return filteredTeachers;
+};
+
 // Get a single teacher by ID
 const getTeacher = async (req, res) => {
   try {
@@ -209,73 +364,24 @@ const deleteTeacher = async (req, res) => {
   }
 };
 
-// Get all teachers with optional filtering
+// Get all teachers with optional filtering (kept for backward compatibility)
 const getTeachersWithFilters = async (req, res) => {
   try {
     const { city, subjects, institutionType, maxHourlyRate, minHourlyRate, teachingMode } = req.query;
 
-    const teachersRef = db.ref('teachers');
-    const snapshot = await teachersRef.once('value');
-    const teachers = snapshot.val();
-
-    if (!teachers) {
-      return res.status(200).json({
-        success: true,
-        data: {}
-      });
-    }
-
-    // Filter teachers based on query parameters
-    const filteredTeachers = Object.keys(teachers).reduce((result, key) => {
-      const teacher = teachers[key];
-      let include = true;
-
-      // City filter
-      if (city && teacher.city && teacher.city.toLowerCase() !== city.toLowerCase()) {
-        include = false;
-      }
-
-      // Subjects filter
-      if (subjects && teacher.subjects && !teacher.subjects.toLowerCase().includes(subjects.toLowerCase())) {
-        include = false;
-      }
-
-      // Institution type filter
-      if (institutionType && teacher.institutionType && teacher.institutionType.toLowerCase() !== institutionType.toLowerCase()) {
-        include = false;
-      }
-
-      // Teaching mode filter
-      if (teachingMode && teacher.teachingMode && teacher.teachingMode.toLowerCase() !== teachingMode.toLowerCase()) {
-        include = false;
-      }
-
-      // Hourly rate range filter
-      if (minHourlyRate && teacher.hourlyRate) {
-        const rate = parseFloat(teacher.hourlyRate.replace(/[^0-9.-]+/g, '')); // Extract numeric value
-        if (rate < parseFloat(minHourlyRate)) {
-          include = false;
-        }
-      }
-
-      if (maxHourlyRate && teacher.hourlyRate) {
-        const rate = parseFloat(teacher.hourlyRate.replace(/[^0-9.-]+/g, '')); // Extract numeric value
-        if (rate > parseFloat(maxHourlyRate)) {
-          include = false;
-        }
-      }
-
-      if (include) {
-        result[key] = teacher;
-      }
-
-      return result;
-    }, {});
+    const filteredData = await getFilteredTeachers({ 
+      city, 
+      subjects, 
+      institutionType, 
+      maxHourlyRate, 
+      minHourlyRate, 
+      teachingMode 
+    });
 
     res.status(200).json({
       success: true,
-      data: filteredTeachers,
-      count: Object.keys(filteredTeachers).length
+      data: filteredData,
+      count: Object.keys(filteredData).length
     });
   } catch (error) {
     console.error('Error fetching filtered teachers:', error);
@@ -287,11 +393,206 @@ const getTeachersWithFilters = async (req, res) => {
   }
 };
 
+// Get professional teacher details by ID
+const getProfessionalTeacherDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const teacherRef = db.ref(`teachers/${id}`);
+    const snapshot = await teacherRef.once('value');
+    const teacher = snapshot.val();
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    // Check if it's a professional teacher
+    const professionalTypes = ['school', 'college', 'pu college', 'coaching institute'];
+    const teacherType = teacher.institutionType ? teacher.institutionType.toLowerCase().trim() : '';
+    
+    if (!professionalTypes.includes(teacherType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'This teacher is not a professional teacher'
+      });
+    }
+
+    // Enhanced professional teacher data structure
+    const professionalTeacherData = {
+      id,
+      basicInfo: {
+        name: teacher.name || 'Not specified',
+        profileImage: teacher.profileImage || '',
+        institutionType: teacher.institutionType || 'Not specified',
+        subjects: teacher.subjects ? teacher.subjects.split(',').map(s => s.trim()) : [],
+        qualification: teacher.qualification || 'Not specified',
+        experience: teacher.experience || 'Not specified',
+        rating: parseFloat(teacher.rating) || 4.5,
+        city: teacher.city || 'Not specified',
+        address: teacher.address || 'Not specified'
+      },
+      teachingDetails: {
+        hourlyRate: teacher.hourlyRate || 'Not specified',
+        monthlyPackage: teacher.monthlyPackage || 'Not specified',
+        demoFee: teacher.demoFee || 'Not specified',
+        teachingMode: teacher.teachingMode || 'Not specified',
+        sessionDuration: teacher.sessionDuration || 'Not specified',
+        studentLevel: teacher.studentLevel || 'Not specified',
+        classSize: teacher.classSize || 'Not specified',
+        teachingApproach: teacher.teachingApproach || 'Not specified',
+        studyMaterials: teacher.studyMaterials || 'Not specified',
+        examPreparation: teacher.examPreparation || 'Not specified'
+      },
+      specialization: {
+        specialization: teacher.specialization ? teacher.specialization.split(',').map(s => s.trim()) : [],
+        certifications: teacher.certifications ? teacher.certifications.split(',').map(c => c.trim()) : [],
+        languages: teacher.languages ? teacher.languages.split(',').map(l => l.trim()) : []
+      },
+      availability: {
+        availability: teacher.availability || 'Not specified',
+        onlinePlatform: teacher.onlinePlatform || 'Not specified',
+        progressReports: teacher.progressReports || 'Not specified',
+        performanceTracking: teacher.performanceTracking || 'Not specified',
+        teachingProcess: teacher.teachingProcess || 'Not specified'
+      },
+      facilities: teacher.facilities || [],
+      about: teacher.about || 'No description available',
+      contact: {
+        phone: teacher.phone || 'Not specified',
+        email: teacher.email || 'Not specified',
+        website: teacher.website || '',
+        socialMedia: teacher.socialMedia || {},
+        googleMapsEmbedUrl: teacher.googleMapsEmbedUrl || ''
+      },
+      timestamps: {
+        createdAt: teacher.createdAt,
+        updatedAt: teacher.updatedAt
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Professional teacher details retrieved successfully',
+      data: professionalTeacherData
+    });
+  } catch (error) {
+    console.error('Error fetching professional teacher details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch professional teacher details',
+      error: error.message
+    });
+  }
+};
+
+// Get personal mentor details by ID
+const getPersonalMentorDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const teacherRef = db.ref(`teachers/${id}`);
+    const snapshot = await teacherRef.once('value');
+    const teacher = snapshot.val();
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Mentor not found'
+      });
+    }
+
+    // Check if it's a personal mentor
+    const personalType = 'personal mentor';
+    const teacherType = teacher.institutionType ? teacher.institutionType.toLowerCase().trim() : '';
+    
+    if (teacherType !== personalType) {
+      return res.status(400).json({
+        success: false,
+        message: 'This teacher is not a personal mentor'
+      });
+    }
+
+    // Enhanced personal mentor data structure
+    const personalMentorData = {
+      id,
+      basicInfo: {
+        name: teacher.name || 'Not specified',
+        profileImage: teacher.profileImage || '',
+        institutionType: teacher.institutionType || 'Personal Mentor',
+        subjects: teacher.subjects ? teacher.subjects.split(',').map(s => s.trim()) : [],
+        qualification: teacher.qualification || 'Not specified',
+        experience: teacher.experience || 'Not specified',
+        rating: parseFloat(teacher.rating) || 4.5,
+        city: teacher.city || 'Not specified',
+        address: teacher.address || 'Not specified'
+      },
+      mentoringDetails: {
+        hourlyRate: teacher.hourlyRate || 'Not specified',
+        monthlyPackage: teacher.monthlyPackage || 'Not specified',
+        demoFee: teacher.demoFee || 'Not specified',
+        mentoringMode: teacher.teachingMode || 'Not specified',
+        sessionDuration: teacher.sessionDuration || 'Not specified',
+        studentLevel: teacher.studentLevel || 'Not specified',
+        classSize: teacher.classSize || 'Not specified',
+        mentoringApproach: teacher.teachingApproach || 'Not specified',
+        studyMaterials: teacher.studyMaterials || 'Not specified',
+        specialization: teacher.specialization ? teacher.specialization.split(',').map(s => s.trim()) : []
+      },
+      expertise: {
+        certifications: teacher.certifications ? teacher.certifications.split(',').map(c => c.trim()) : [],
+        languages: teacher.languages ? teacher.languages.split(',').map(l => l.trim()) : [],
+        skills: teacher.specialization ? teacher.specialization.split(',').map(s => s.trim()) : []
+      },
+      availability: {
+        availability: teacher.availability || 'Not specified',
+        onlinePlatform: teacher.onlinePlatform || 'Not specified',
+        progressTracking: teacher.performanceTracking || 'Not specified',
+        mentoringProcess: teacher.teachingProcess || 'Not specified',
+        personalizedGuidance: teacher.progressReports || 'Not specified'
+      },
+      facilities: teacher.facilities || [],
+      about: teacher.about || 'No description available',
+      contact: {
+        phone: teacher.phone || 'Not specified',
+        email: teacher.email || 'Not specified',
+        website: teacher.website || '',
+        socialMedia: teacher.socialMedia || {},
+        googleMapsEmbedUrl: teacher.googleMapsEmbedUrl || ''
+      },
+      timestamps: {
+        createdAt: teacher.createdAt,
+        updatedAt: teacher.updatedAt
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Personal mentor details retrieved successfully',
+      data: personalMentorData
+    });
+  } catch (error) {
+    console.error('Error fetching personal mentor details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch personal mentor details',
+      error: error.message
+    });
+  }
+};
+
+
+
 module.exports = {
   addTeacher,
   getTeachers,
+  getProfessionalTeachers,
+  getPersonalMentors,
   getTeacher,
   updateTeacher,
   deleteTeacher,
-  getTeachersWithFilters
+  getTeachersWithFilters,
+  getProfessionalTeacherDetails,
+  getPersonalMentorDetails
+
 };
