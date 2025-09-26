@@ -135,6 +135,8 @@ router.put('/admin/edit-teachers/:id', upload.fields([
   { name: 'profileImage', maxCount: 1 }
 ]), TeacherController.updateTeacher);
 router.delete('/admin/del-teachers/:id',TeacherController.deleteTeacher);
+router.get('/search/professional', TeacherController.searchProfessionalTeachersByName);
+router.get('/search/personal', TeacherController.searchPersonalMentorsByName);
 
 
 

@@ -581,6 +581,85 @@ const getPersonalMentorDetails = async (req, res) => {
   }
 };
 
+const searchProfessionalTeachersByName = async (req, res) => {
+  try {
+    const { name, city, subjects, maxHourlyRate, minHourlyRate, teachingMode } = req.query;
+    
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name query parameter is required'
+      });
+    }
+
+    const professionalTypes = ['School', 'College', 'PU College', 'Coaching Institute'];
+    const institutionTypes = professionalTypes.join(',');
+
+    const filteredData = await getFilteredTeachers({ 
+      name,
+      city, 
+      subjects, 
+      institutionType: institutionTypes,
+      maxHourlyRate, 
+      minHourlyRate, 
+      teachingMode 
+    });
+
+    res.status(200).json({
+      success: true,
+      data: filteredData,
+      count: Object.keys(filteredData).length
+    });
+  } catch (error) {
+    console.error('Error searching professional teachers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to search professional teachers',
+      error: error.message
+    });
+  }
+};
+
+const searchPersonalMentorsByName = async (req, res) => {
+  try {
+    const { name, city, subjects, maxHourlyRate, minHourlyRate, teachingMode } = req.query;
+    
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name query parameter is required'
+      });
+    }
+
+    const personalType = 'Personal Mentor';
+    const institutionType = personalType;
+
+    const filteredData = await getFilteredTeachers({ 
+      name,
+      city, 
+      subjects, 
+      institutionType,
+      maxHourlyRate, 
+      minHourlyRate, 
+      teachingMode 
+    });
+
+    res.status(200).json({
+      success: true,
+      data: filteredData,
+      count: Object.keys(filteredData).length
+    });
+  } catch (error) {
+    console.error('Error searching personal mentors:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to search personal mentors',
+      error: error.message
+    });
+  }
+};
+
+
 
 
 module.exports = {
@@ -593,6 +672,9 @@ module.exports = {
   deleteTeacher,
   getTeachersWithFilters,
   getProfessionalTeacherDetails,
-  getPersonalMentorDetails
+  getPersonalMentorDetails,
+  searchProfessionalTeachersByName,
+  searchPersonalMentorsByName
+
 
 };
