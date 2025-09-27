@@ -37,6 +37,10 @@ upload.fields([
 router.delete('/admin/del-schools/:id', schoolController.deleteSchool);
 
 router.get('/getschools/filtered', schoolController.getSchoolsWithFilters); 
+router.post('/admin/schools/:schoolId/reviews', schoolController.addReview);
+router.get('/schools/:schoolId/reviews', schoolController.getReviews);
+router.put('/schools/:schoolId/reviews/:reviewId/like', schoolController.likeReview);
+router.put('/schools/:schoolId/reviews/:reviewId/dislike', schoolController.dislikeReview);
 
 router.post('/admin/addcolleges', 
   upload.fields([

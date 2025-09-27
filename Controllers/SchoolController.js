@@ -2,23 +2,19 @@ const { db } = require('../firebaseAdmin');
 const { uploadToFirebase } = require('../Middleware/uploadMiddleware');
 const School = require('../Models/SchoolModel');
 
-// Add a new school
 const addSchool = async (req, res) => {
   try {
     console.log('Request files:', req.files);
     console.log('Request body:', req.body);
     
-    // Parse stringified fields
     const parsedData = {
       ...req.body,
       facilities: req.body.facilities ? JSON.parse(req.body.facilities) : [],
       socialMedia: req.body.socialMedia ? JSON.parse(req.body.socialMedia) : {}
     };
     
-    // Create school instance with parsed data
     const schoolData = new School(parsedData);
     
-    // Validate required fields
     const validationErrors = schoolData.validate();
     if (validationErrors.length > 0) {
       return res.status(400).json({
@@ -28,7 +24,6 @@ const addSchool = async (req, res) => {
       });
     }
     
-    // Upload school image if provided
     if (req.files && req.files.schoolImage && Array.isArray(req.files.schoolImage) && req.files.schoolImage[0]) {
       console.log('Uploading school image:', req.files.schoolImage[0].originalname);
       try {
@@ -43,7 +38,6 @@ const addSchool = async (req, res) => {
       schoolData.schoolImage = '';
     }
     
-    // Upload gallery photos if provided
     if (req.files && req.files.photos && Array.isArray(req.files.photos) && req.files.photos.length > 0) {
       console.log('Uploading gallery photos:', req.files.photos.length);
       const photoUploads = req.files.photos.map(file => 
@@ -61,15 +55,12 @@ const addSchool = async (req, res) => {
       schoolData.photos = [];
     }
     
-    // Generate a unique ID for the school
     const schoolRef = db.ref('schools').push();
     const schoolId = schoolRef.key;
     
-    // Add timestamps
     schoolData.createdAt = new Date().toISOString();
     schoolData.updatedAt = new Date().toISOString();
     
-    // Save to Firebase
     await schoolRef.set({
       id: schoolId,
       ...schoolData
@@ -92,7 +83,6 @@ const addSchool = async (req, res) => {
     });
   }
 };
-// Get all schools
 const getSchools = async (req, res) => {
   try {
     const schoolsRef = db.ref('schools');
@@ -142,7 +132,6 @@ const getSchool = async (req, res) => {
   }
 };
 
-// Update a school
 const updateSchool = async (req, res) => {
   try {
     const { id } = req.params;
@@ -157,25 +146,21 @@ const updateSchool = async (req, res) => {
       });
     }
     
-    // Update school data
     const updatedData = {
       ...existingSchool,
       ...req.body,
       updatedAt: new Date().toISOString()
     };
     
-    // Upload new school image if provided
     if (req.files && req.files.schoolImage && Array.isArray(req.files.schoolImage) && req.files.schoolImage[0]) {
       try {
         updatedData.schoolImage = await uploadToFirebase(req.files.schoolImage[0], 'schools/images');
       } catch (uploadError) {
         console.error('Failed to upload school image:', uploadError);
-        // Keep existing image if upload fails
         updatedData.schoolImage = existingSchool.schoolImage || '';
       }
     }
     
-    // Upload new gallery photos if provided
     if (req.files && req.files.photos && Array.isArray(req.files.photos) && req.files.photos.length > 0) {
       const photoUploads = req.files.photos.map(file => 
         uploadToFirebase(file, 'schools/gallery').catch(error => {
@@ -188,7 +173,6 @@ const updateSchool = async (req, res) => {
       updatedData.photos = [...(existingSchool.photos || []), ...validNewPhotos];
     }
     
-    // Save to Firebase
     await schoolRef.set(updatedData);
     
     res.status(200).json({
@@ -206,7 +190,6 @@ const updateSchool = async (req, res) => {
   }
 };
 
-// Delete a school
 const deleteSchool = async (req, res) => {
   try {
     const { id } = req.params;
@@ -221,7 +204,6 @@ const deleteSchool = async (req, res) => {
       });
     }
     
-    // Delete from Firebase
     await schoolRef.remove();
     
     res.status(200).json({
@@ -237,7 +219,6 @@ const deleteSchool = async (req, res) => {
     });
   }
 };
-// Get all schools with optional filtering
 const getSchoolsWithFilters = async (req, res) => {
   try {
     const { 
@@ -260,32 +241,26 @@ const getSchoolsWithFilters = async (req, res) => {
       });
     }
     
-    // Filter schools based on query parameters
     const filteredSchools = Object.keys(schools).reduce((result, key) => {
       const school = schools[key];
       let include = true;
       
-      // City filter
       if (city && school.city && school.city.toLowerCase() !== city.toLowerCase()) {
         include = false;
       }
       
-      // Board filter
       if (board && school.board && school.board.toLowerCase() !== board.toLowerCase()) {
         include = false;
       }
       
-      // School type filter
       if (schoolType && school.schoolType && school.schoolType.toLowerCase() !== schoolType.toLowerCase()) {
         include = false;
       }
       
-      // Gender filter
       if (gender && school.gender && school.gender.toLowerCase() !== gender.toLowerCase()) {
         include = false;
       }
       
-      // Fee range filter
       if (minFee && school.totalAnnualFee < parseInt(minFee)) {
         include = false;
       }
@@ -315,6 +290,169 @@ const getSchoolsWithFilters = async (req, res) => {
     });
   }
 };
+const getReviews = async (req, res) => {
+  try {
+    const { schoolId } = req.params;
+    const reviewsRef = db.ref(`reviews/${schoolId}`);
+    const snapshot = await reviewsRef.once('value');
+    const reviews = snapshot.val() || {};
+
+    res.status(200).json({
+      success: true,
+      data: Object.values(reviews),
+      count: Object.keys(reviews).length
+    });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch reviews',
+      error: error.message
+    });
+  }
+};
+const addReview = async (req, res) => {
+  try {
+    const { text, rating, schoolId, author } = req.body;
+
+    // Create review instance
+    const reviewData = new School({
+      text,
+      rating: parseInt(rating),
+      schoolId,
+      author
+    });
+
+    // Validate review data
+    const validationErrors = reviewData.validate();
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: validationErrors
+      });
+    }
+
+    // Check if school exists
+    const schoolRef = db.ref(`schools/${schoolId}`);
+    const schoolSnapshot = await schoolRef.once('value');
+    if (!schoolSnapshot.exists()) {
+      return res.status(404).json({
+        success: false,
+        message: 'School not found'
+      });
+    }
+
+    // Generate a unique ID for the review
+    const reviewRef = db.ref(`reviews/${schoolId}`).push();
+    const reviewId = reviewRef.key;
+
+    // Save review to Firebase
+    await reviewRef.set({
+      id: reviewId,
+      ...reviewData
+    });
+
+    // Update school's average rating and review count
+    const reviewsSnapshot = await db.ref(`reviews/${schoolId}`).once('value');
+    const reviews = reviewsSnapshot.val() || {};
+    const reviewList = Object.values(reviews);
+    const avgRating = reviewList.length
+      ? reviewList.reduce((sum, review) => sum + review.rating, 0) / reviewList.length
+      : 0;
+
+    await schoolRef.update({
+      rating: avgRating.toFixed(1),
+      reviewCount: reviewList.length,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Review added successfully',
+      data: {
+        id: reviewId,
+        ...reviewData
+      }
+    });
+  } catch (error) {
+    console.error('Error adding review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add review',
+      error: error.message
+    });
+  }
+};
+
+
+const likeReview = async (req, res) => {
+  try {
+    const { schoolId, reviewId } = req.params;
+    const reviewRef = db.ref(`reviews/${schoolId}/${reviewId}`);
+    const snapshot = await reviewRef.once('value');
+    const review = snapshot.val();
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found'
+      });
+    }
+
+    await reviewRef.update({
+      likes: (review.likes || 0) + 1,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Review liked successfully'
+    });
+  } catch (error) {
+    console.error('Error liking review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to like review',
+      error: error.message
+    });
+  }
+};
+
+const dislikeReview = async (req, res) => {
+  try {
+    const { schoolId, reviewId } = req.params;
+    const reviewRef = db.ref(`reviews/${schoolId}/${reviewId}`);
+    const snapshot = await reviewRef.once('value');
+    const review = snapshot.val();
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found'
+      });
+    }
+
+    await reviewRef.update({
+      dislikes: (review.dislikes || 0) + 1,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Review disliked successfully'
+    });
+  } catch (error) {
+    console.error('Error disliking review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to dislike review',
+      error: error.message
+    });
+  }
+};
+
+
 
 module.exports = {
   addSchool,
@@ -322,5 +460,10 @@ module.exports = {
   getSchool,
   updateSchool,
   deleteSchool,
-  getSchoolsWithFilters
+  getSchoolsWithFilters,
+  addReview,
+  getReviews,
+  likeReview,
+  dislikeReview
+
 };
