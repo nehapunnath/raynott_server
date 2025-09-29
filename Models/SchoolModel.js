@@ -34,8 +34,8 @@ class SchoolModel {
     this.admissionProcess = data.admissionProcess;
     this.schoolImage = data.schoolImage || '';
     this.photos = data.photos || [];
-    this.rating = data.rating || 0; 
-    this.reviewCount = data.reviewCount || 0;
+    // this.rating = data.rating || 0; 
+    // this.reviewCount = data.reviewCount || 0;
     this.createdAt = new Date().toISOString();
     this.updatedAt = new Date().toISOString();
   }
@@ -50,13 +50,13 @@ class SchoolModel {
       }
     });
     
-    if (this.rating && (this.rating < 0 || this.rating > 5)) {
-      errors.push('Rating must be between 0 and 5');
-    }
+    // if (this.rating && (this.rating < 0 || this.rating > 5)) {
+    //   errors.push('Rating must be between 0 and 5');
+    // }
 
-    if (this.reviewCount && this.reviewCount < 0) {
-      errors.push('Review count cannot be negative');
-    }
+    // if (this.reviewCount && this.reviewCount < 0) {
+    //   errors.push('Review count cannot be negative');
+    // }
     
     return errors;
   }

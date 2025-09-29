@@ -1,6 +1,7 @@
 const { db } = require('../firebaseAdmin');
 const { uploadToFirebase } = require('../Middleware/uploadMiddleware');
 const TuitionCoaching = require('../Models/TuitionCoachingModel');
+const ReviewModel = require('../Models/TuitionCoachingReview');
 
 // Helper function for safe JSON parsing
 // UPDATED: Better error logging; robust comma-split for arrays; filters empty items
@@ -532,6 +533,172 @@ const deleteCoachingType = async (req, res) => {
     });
   }
 };
+const addReview = async (req, res) => {
+  try {
+    const { tuitionCoachingId } = req.params;
+    const { text, rating, author } = req.body;
+
+    // Create review instance
+    const reviewData = new ReviewModel({
+      text,
+      rating: parseInt(rating),
+      entityId: tuitionCoachingId,
+      entityType: 'tuitionCoaching',
+      author
+    });
+
+    // Validate review data
+    const validationErrors = reviewData.validate();
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: validationErrors
+      });
+    }
+
+    // Check if tuition/coaching center exists
+    const tuitionCoachingRef = db.ref(`tuitionCoaching/${tuitionCoachingId}`);
+    const tuitionCoachingSnapshot = await tuitionCoachingRef.once('value');
+    if (!tuitionCoachingSnapshot.exists()) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tuition/Coaching Center not found'
+      });
+    }
+
+    // Generate a unique ID for the review
+    const reviewRef = db.ref(`reviews/${tuitionCoachingId}`).push();
+    const reviewId = reviewRef.key;
+
+    // Save review to Firebase
+    await reviewRef.set({
+      id: reviewId,
+      ...reviewData
+    });
+
+    // Update tuition/coaching center's average rating and review count
+    const reviewsSnapshot = await db.ref(`reviews/${tuitionCoachingId}`).once('value');
+    const reviews = reviewsSnapshot.val() || {};
+    const reviewList = Object.values(reviews);
+    const avgRating = reviewList.length
+      ? reviewList.reduce((sum, review) => sum + review.rating, 0) / reviewList.length
+      : 0;
+
+    await tuitionCoachingRef.update({
+      rating: avgRating.toFixed(1),
+      reviewCount: reviewList.length,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Review added successfully',
+      data: {
+        id: reviewId,
+        ...reviewData
+      }
+    });
+  } catch (error) {
+    console.error('Error adding review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add review',
+      error: error.message
+    });
+  }
+};
+
+// Get reviews for a tuition/coaching center
+const getReviews = async (req, res) => {
+  try {
+    const { tuitionCoachingId } = req.params;
+    const reviewsRef = db.ref(`reviews/${tuitionCoachingId}`);
+    const snapshot = await reviewsRef.once('value');
+    const reviews = snapshot.val() || {};
+
+    res.status(200).json({
+      success: true,
+      data: Object.values(reviews),
+      count: Object.keys(reviews).length
+    });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch reviews',
+      error: error.message
+    });
+  }
+};
+
+// Like a review
+const likeReview = async (req, res) => {
+  try {
+    const { tuitionCoachingId, reviewId } = req.params;
+    const reviewRef = db.ref(`reviews/${tuitionCoachingId}/${reviewId}`);
+    const snapshot = await reviewRef.once('value');
+    const review = snapshot.val();
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found'
+      });
+    }
+
+    await reviewRef.update({
+      likes: (review.likes || 0) + 1,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Review liked successfully'
+    });
+  } catch (error) {
+    console.error('Error liking review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to like review',
+      error: error.message
+    });
+  }
+};
+
+// Dislike a review
+const dislikeReview = async (req, res) => {
+  try {
+    const { tuitionCoachingId, reviewId } = req.params;
+    const reviewRef = db.ref(`reviews/${tuitionCoachingId}/${reviewId}`);
+    const snapshot = await reviewRef.once('value');
+    const review = snapshot.val();
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found'
+      });
+    }
+
+    await reviewRef.update({
+      dislikes: (review.dislikes || 0) + 1,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Review disliked successfully'
+    });
+  } catch (error) {
+    console.error('Error disliking review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to dislike review',
+      error: error.message
+    });
+  }
+};
 
 module.exports = {
   addTuitionCoaching,
@@ -542,5 +709,9 @@ module.exports = {
   getAllCoachingTypes,
   createCoachingType,
   deleteCoachingType,
-  searchTuitionCoachings
+  searchTuitionCoachings,
+  addReview,
+  getReviews,
+  likeReview,
+  dislikeReview
 };

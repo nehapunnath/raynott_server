@@ -1,6 +1,7 @@
 const { db } = require('../firebaseAdmin');
 const { uploadToFirebase } = require('../Middleware/uploadMiddleware');
 const PUCollege = require('../Models/PuCollegeModel');
+const ReviewModel = require('../Models/PuCollegeReview');
 
 // Helper function to clean undefined values from object
 const cleanUndefinedValues = (obj) => {
@@ -39,10 +40,8 @@ const addPUCollege = async (req, res) => {
       subjects: safeParse(req.body.subjects, []),
       facilities: safeParse(req.body.facilities, []),
       socialMedia: safeParse(req.body.socialMedia, {}),
-      // Set default values for required fields that might be missing
       competitiveExamPrep: req.body.competitiveExamPrep || '',
       transportation: req.body.transportation || '',
-      // Convert string numbers to actual numbers
       totalAnnualFee: parseInt(req.body.totalAnnualFee) || 0,
       admissionFee: parseInt(req.body.admissionFee) || 0,
       tuitionFee: parseInt(req.body.tuitionFee) || 0,
@@ -51,8 +50,9 @@ const addPUCollege = async (req, res) => {
       establishmentYear: parseInt(req.body.establishmentYear) || 0,
       campusSize: req.body.campusSize || '',
       classrooms: req.body.classrooms || '',
-      // Remove the preview field as it's not needed in database
-      collegeImagePreview: undefined
+      collegeImagePreview: undefined,
+      rating: 0, // Initialize rating
+      reviewCount: 0 // Initialize review count
     };
 
     // Clean undefined values
@@ -477,6 +477,172 @@ const deletePUCollegeType = async (req, res) => {
   }
 };
 
+// Add a review for a PU College
+const addReview = async (req, res) => {
+  try {
+    const { text, rating, puCollegeId, author } = req.body;
+
+    // Create review instance
+    const reviewData = new ReviewModel({
+      text,
+      rating: parseInt(rating),
+      puCollegeId,
+      author
+    });
+
+    // Validate review data
+    const validationErrors = reviewData.validate();
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: validationErrors
+      });
+    }
+
+    // Check if PU college exists
+    const puCollegeRef = db.ref(`pucolleges/${puCollegeId}`);
+    const puCollegeSnapshot = await puCollegeRef.once('value');
+    if (!puCollegeSnapshot.exists()) {
+      return res.status(404).json({
+        success: false,
+        message: 'PU College not found'
+      });
+    }
+
+    // Generate a unique ID for the review
+    const reviewRef = db.ref(`reviews/${puCollegeId}`).push();
+    const reviewId = reviewRef.key;
+
+    // Save review to Firebase
+    await reviewRef.set({
+      id: reviewId,
+      ...reviewData
+    });
+
+    // Update PU college's average rating and review count
+    const reviewsSnapshot = await db.ref(`reviews/${puCollegeId}`).once('value');
+    const reviews = reviewsSnapshot.val() || {};
+    const reviewList = Object.values(reviews);
+    const avgRating = reviewList.length
+      ? reviewList.reduce((sum, review) => sum + review.rating, 0) / reviewList.length
+      : 0;
+
+    await puCollegeRef.update({
+      rating: avgRating.toFixed(1),
+      reviewCount: reviewList.length,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Review added successfully',
+      data: {
+        id: reviewId,
+        ...reviewData
+      }
+    });
+  } catch (error) {
+    console.error('Error adding review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add review',
+      error: error.message
+    });
+  }
+};
+
+// Get reviews for a PU College
+const getReviews = async (req, res) => {
+  try {
+    const { puCollegeId } = req.params;
+    const reviewsRef = db.ref(`reviews/${puCollegeId}`);
+    const snapshot = await reviewsRef.once('value');
+    const reviews = snapshot.val() || {};
+
+    res.status(200).json({
+      success: true,
+      data: Object.values(reviews),
+      count: Object.keys(reviews).length
+    });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch reviews',
+      error: error.message
+    });
+  }
+};
+
+// Like a review
+const likeReview = async (req, res) => {
+  try {
+    const { puCollegeId, reviewId } = req.params;
+    const reviewRef = db.ref(`reviews/${puCollegeId}/${reviewId}`);
+    const snapshot = await reviewRef.once('value');
+    const review = snapshot.val();
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found'
+      });
+    }
+
+    await reviewRef.update({
+      likes: (review.likes || 0) + 1,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Review liked successfully'
+    });
+  } catch (error) {
+    console.error('Error liking review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to like review',
+      error: error.message
+    });
+  }
+};
+
+// Dislike a review
+const dislikeReview = async (req, res) => {
+  try {
+    const { puCollegeId, reviewId } = req.params;
+    const reviewRef = db.ref(`reviews/${puCollegeId}/${reviewId}`);
+    const snapshot = await reviewRef.once('value');
+    const review = snapshot.val();
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Review not found'
+      });
+    }
+
+    await reviewRef.update({
+      dislikes: (review.dislikes || 0) + 1,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Review disliked successfully'
+    });
+  } catch (error) {
+    console.error('Error disliking review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to dislike review',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   addPUCollege,
   getPUColleges,
@@ -486,5 +652,9 @@ module.exports = {
   getAllPUCollegeTypes,
   createPUCollegeType,
   deletePUCollegeType,
-  searchPUColleges
+  searchPUColleges,
+  addReview,
+  getReviews,
+  likeReview,
+  dislikeReview
 };

@@ -1,6 +1,7 @@
 const { db } = require('../firebaseAdmin');
 const { uploadToFirebase } = require('../Middleware/uploadMiddleware');
 const School = require('../Models/SchoolModel');
+const Review=require('../Models/ReviewModel')
 
 const addSchool = async (req, res) => {
   try {
@@ -316,7 +317,7 @@ const addReview = async (req, res) => {
     const { text, rating, schoolId, author } = req.body;
 
     // Create review instance
-    const reviewData = new School({
+    const reviewData = new Review({
       text,
       rating: parseInt(rating),
       schoolId,

@@ -1,6 +1,7 @@
 const { db } = require('../firebaseAdmin');
 const { uploadToFirebase } = require('../Middleware/uploadMiddleware');
 const Teacher = require('../Models/TeachersModel');
+const ReviewModel = require('../Models/TeacherReview');
 
 // Add a new teacher
 const addTeacher = async (req, res) => {
@@ -658,7 +659,273 @@ const searchPersonalMentorsByName = async (req, res) => {
     });
   }
 };
+const addProfessionalReview = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { text, rating, author } = req.body;
 
+    // Check if teacher exists and is professional
+    const teacherRef = db.ref(`teachers/${teacherId}`);
+    const teacherSnapshot = await teacherRef.once('value');
+    const teacher = teacherSnapshot.val();
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+    const professionalTypes = ['school', 'college', 'pu college', 'coaching institute'];
+    if (!professionalTypes.includes(teacher.institutionType?.toLowerCase())) {
+      return res.status(400).json({ success: false, message: 'Teacher is not a professional teacher' });
+    }
+
+    // Create review instance
+    const reviewData = new ReviewModel({
+      text,
+      rating: parseInt(rating),
+      entityId: teacherId,
+      entityType: 'professional_teacher',
+      author: author || 'Anonymous' // Fallback to 'Anonymous' if not provided
+    });
+
+    // Validate review data
+    const validationErrors = reviewData.validate();
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: validationErrors });
+    }
+
+    // Generate a unique ID for the review
+    const reviewRef = db.ref(`reviews/professional/${teacherId}`).push();
+    const reviewId = reviewRef.key;
+
+    // Save review to Firebase
+    await reviewRef.set({
+      id: reviewId,
+      ...reviewData
+    });
+
+    // Update teacher's average rating and review count
+    const reviewsSnapshot = await db.ref(`reviews/professional/${teacherId}`).once('value');
+    const reviews = reviewsSnapshot.val() || {};
+    const reviewList = Object.values(reviews);
+    const avgRating = reviewList.length
+      ? reviewList.reduce((sum, review) => sum + review.rating, 0) / reviewList.length
+      : 0;
+
+    await teacherRef.update({
+      rating: avgRating.toFixed(1),
+      reviewCount: reviewList.length,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Review added successfully',
+      data: { id: reviewId, ...reviewData }
+    });
+  } catch (error) {
+    console.error('Error adding professional review:', error);
+    res.status(500).json({ success: false, message: 'Failed to add review', error: error.message });
+  }
+};
+
+// Add a review for a personal mentor
+const addPersonalReview = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { text, rating, author } = req.body;
+
+    // Check if teacher exists and is personal mentor
+    const teacherRef = db.ref(`teachers/${teacherId}`);
+    const teacherSnapshot = await teacherRef.once('value');
+    const teacher = teacherSnapshot.val();
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Mentor not found' });
+    }
+    if (teacher.institutionType?.toLowerCase() !== 'personal mentor') {
+      return res.status(400).json({ success: false, message: 'Teacher is not a personal mentor' });
+    }
+
+    // Create review instance
+    const reviewData = new ReviewModel({
+      text,
+      rating: parseInt(rating),
+      entityId: teacherId,
+      entityType: 'personal_mentor',
+      author: author || 'Anonymous' // Fallback to 'Anonymous' if not provided
+    });
+
+    // Validate review data
+    const validationErrors = reviewData.validate();
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: validationErrors });
+    }
+
+    // Generate a unique ID for the review
+    const reviewRef = db.ref(`reviews/personal/${teacherId}`).push();
+    const reviewId = reviewRef.key;
+
+    // Save review to Firebase
+    await reviewRef.set({
+      id: reviewId,
+      ...reviewData
+    });
+
+    // Update mentor's average rating and review count
+    const reviewsSnapshot = await db.ref(`reviews/personal/${teacherId}`).once('value');
+    const reviews = reviewsSnapshot.val() || {};
+    const reviewList = Object.values(reviews);
+    const avgRating = reviewList.length
+      ? reviewList.reduce((sum, review) => sum + review.rating, 0) / reviewList.length
+      : 0;
+
+    await teacherRef.update({
+      rating: avgRating.toFixed(1),
+      reviewCount: reviewList.length,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Review added successfully',
+      data: { id: reviewId, ...reviewData }
+    });
+  } catch (error) {
+    console.error('Error adding personal review:', error);
+    res.status(500).json({ success: false, message: 'Failed to add review', error: error.message });
+  }
+};
+
+// Get reviews for a professional teacher
+const getProfessionalReviews = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const reviewsRef = db.ref(`reviews/professional/${teacherId}`);
+    const snapshot = await reviewsRef.once('value');
+    const reviews = snapshot.val() || {};
+
+    res.status(200).json({
+      success: true,
+      data: Object.values(reviews),
+      count: Object.keys(reviews).length
+    });
+  } catch (error) {
+    console.error('Error fetching professional reviews:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch reviews', error: error.message });
+  }
+};
+
+// Get reviews for a personal mentor
+const getPersonalReviews = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const reviewsRef = db.ref(`reviews/personal/${teacherId}`);
+    const snapshot = await reviewsRef.once('value');
+    const reviews = snapshot.val() || {};
+
+    res.status(200).json({
+      success: true,
+      data: Object.values(reviews),
+      count: Object.keys(reviews).length
+    });
+  } catch (error) {
+    console.error('Error fetching personal reviews:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch reviews', error: error.message });
+  }
+};
+
+// Like a professional review
+const likeProfessionalReview = async (req, res) => {
+  try {
+    const { teacherId, reviewId } = req.params;
+    const reviewRef = db.ref(`reviews/professional/${teacherId}/${reviewId}`);
+    const snapshot = await reviewRef.once('value');
+    const review = snapshot.val();
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    await reviewRef.update({
+      likes: (review.likes || 0) + 1,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(200).json({ success: true, message: 'Review liked successfully' });
+  } catch (error) {
+    console.error('Error liking professional review:', error);
+    res.status(500).json({ success: false, message: 'Failed to like review', error: error.message });
+  }
+};
+
+// Like a personal review
+const likePersonalReview = async (req, res) => {
+  try {
+    const { teacherId, reviewId } = req.params;
+    const reviewRef = db.ref(`reviews/personal/${teacherId}/${reviewId}`);
+    const snapshot = await reviewRef.once('value');
+    const review = snapshot.val();
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    await reviewRef.update({
+      likes: (review.likes || 0) + 1,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(200).json({ success: true, message: 'Review liked successfully' });
+  } catch (error) {
+    console.error('Error liking personal review:', error);
+    res.status(500).json({ success: false, message: 'Failed to like review', error: error.message });
+  }
+};
+
+// Dislike a professional review
+const dislikeProfessionalReview = async (req, res) => {
+  try {
+    const { teacherId, reviewId } = req.params;
+    const reviewRef = db.ref(`reviews/professional/${teacherId}/${reviewId}`);
+    const snapshot = await reviewRef.once('value');
+    const review = snapshot.val();
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    await reviewRef.update({
+      dislikes: (review.dislikes || 0) + 1,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(200).json({ success: true, message: 'Review disliked successfully' });
+  } catch (error) {
+    console.error('Error disliking professional review:', error);
+    res.status(500).json({ success: false, message: 'Failed to dislike review', error: error.message });
+  }
+};
+
+// Dislike a personal review
+const dislikePersonalReview = async (req, res) => {
+  try {
+    const { teacherId, reviewId } = req.params;
+    const reviewRef = db.ref(`reviews/personal/${teacherId}/${reviewId}`);
+    const snapshot = await reviewRef.once('value');
+    const review = snapshot.val();
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    await reviewRef.update({
+      dislikes: (review.dislikes || 0) + 1,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.status(200).json({ success: true, message: 'Review disliked successfully' });
+  } catch (error) {
+    console.error('Error disliking personal review:', error);
+    res.status(500).json({ success: false, message: 'Failed to dislike review', error: error.message });
+  }
+};
 
 
 
@@ -674,7 +941,15 @@ module.exports = {
   getProfessionalTeacherDetails,
   getPersonalMentorDetails,
   searchProfessionalTeachersByName,
-  searchPersonalMentorsByName
+  searchPersonalMentorsByName,
+  addProfessionalReview,
+  addPersonalReview,
+  getProfessionalReviews,
+  getPersonalReviews,
+  likeProfessionalReview,
+  likePersonalReview,
+  dislikeProfessionalReview,
+  dislikePersonalReview
 
 
 };

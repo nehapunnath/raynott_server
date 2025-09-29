@@ -67,6 +67,10 @@ router.post('/admin/college-types', CollegeController.createCollegeType);
 router.delete('/admin/college-types/:id',CollegeController.deleteCollegeType);
 
 router.get('/admin/search/colleges', CollegeController.searchColleges)
+router.post('/admin/colleges/:collegeId/reviews', CollegeController.addReview);
+router.get('/colleges/:collegeId/reviews', CollegeController.getReviews);
+router.put('/colleges/:collegeId/reviews/:reviewId/like', CollegeController.likeReview);
+router.put('/colleges/:collegeId/reviews/:reviewId/dislike', CollegeController.dislikeReview);
 
 // PU College routes
 router.post('/admin/addpucolleges', 
@@ -97,6 +101,11 @@ router.post('/admin/pucollege-types', PUCollegeController.createPUCollegeType);
 router.delete('/admin/pucollege-types/:id',  PUCollegeController.deletePUCollegeType);
 
 router.get('/admin/search/pucolleges', PUCollegeController.searchPUColleges);
+router.post('/admin/pucolleges/:puCollegeId/reviews', PUCollegeController.addReview);
+router.get('/pucolleges/:puCollegeId/reviews', PUCollegeController.getReviews);
+router.put('/pucolleges/:puCollegeId/reviews/:reviewId/like', PUCollegeController.likeReview);
+router.put('/pucolleges/:puCollegeId/reviews/:reviewId/dislike', PUCollegeController.dislikeReview);
+
 
 // Tuition/Coaching Center routes
 router.post('/admin/addtuitioncoaching', 
@@ -123,6 +132,10 @@ router.get('/admin/coaching-types', TuitionCoachingController.getAllCoachingType
 router.post('/admin/coaching-types', TuitionCoachingController.createCoachingType);
 router.delete('/admin/coaching-types/:id', TuitionCoachingController.deleteCoachingType);
 router.get('/admin/search/tuitioncoaching', TuitionCoachingController.searchTuitionCoachings);
+router.post('/admin/tuitioncoaching/:tuitionCoachingId/reviews', TuitionCoachingController.addReview);
+router.get('/tuitioncoaching/:tuitionCoachingId/reviews', TuitionCoachingController.getReviews);
+router.put('/tuitioncoaching/:tuitionCoachingId/reviews/:reviewId/like', TuitionCoachingController.likeReview);
+router.put('/tuitioncoaching/:tuitionCoachingId/reviews/:reviewId/dislike', TuitionCoachingController.dislikeReview);
 
 router.post('/admin/addteachers', upload.fields([
   { name: 'profileImage', maxCount: 1 }
@@ -142,13 +155,13 @@ router.delete('/admin/del-teachers/:id',TeacherController.deleteTeacher);
 router.get('/search/professional', TeacherController.searchProfessionalTeachersByName);
 router.get('/search/personal', TeacherController.searchPersonalMentorsByName);
 
-
-
-
-
-
-
-
-
+router.post('/teachers/professional/:teacherId/reviews', TeacherController.addProfessionalReview);
+router.post('/teachers/personal/:teacherId/reviews', TeacherController.addPersonalReview);
+router.get('/teachers/professional/:teacherId/reviews', TeacherController.getProfessionalReviews);
+router.get('/teachers/personal/:teacherId/reviews', TeacherController.getPersonalReviews);
+router.put('/teachers/professional/:teacherId/reviews/:reviewId/like', TeacherController.likeProfessionalReview);
+router.put('/teachers/personal/:teacherId/reviews/:reviewId/like', TeacherController.likePersonalReview);
+router.put('/teachers/professional/:teacherId/reviews/:reviewId/dislike', TeacherController.dislikeProfessionalReview);
+router.put('/teachers/personal/:teacherId/reviews/:reviewId/dislike', TeacherController.dislikePersonalReview);
 
 module.exports = router;
