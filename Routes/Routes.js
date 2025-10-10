@@ -10,6 +10,8 @@ const TuitionCoachingController=require('../Controllers/TuitionCoachingControlle
 const TeacherController=require('../Controllers/TeachersController')
 const RegistrationController = require('../Controllers/RegistrationControleer');
 const AdminRegistrationController = require('../Controllers/AdminRegController');
+const BestSellersController= require('../Controllers/BestSellers');
+
 
 
 
@@ -191,5 +193,7 @@ router.get('/admin/all', AdminRegistrationController.getAllRegistrations);
 router.get('/admin/registrations/:id', AdminRegistrationController.getRegistrationById); 
 router.put('/admin/approve/:id', AdminRegistrationController.approveRegistration);
 router.put('/admin/reject/:id', AdminRegistrationController.rejectRegistration);
+
+router.get('/bestsellers', BestSellersController.getBestSellers)
 
 module.exports = router;
