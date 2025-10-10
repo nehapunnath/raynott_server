@@ -2,6 +2,7 @@ class PUCollegeModel {
   constructor(data) {
     this.name = data.name;
     this.typeOfCollege = data.typeOfCollege;
+    this.affiliationNumber = data.affiliationNumber || '';
     this.board = data.board;
     this.streams = data.streams || [];
     this.subjects = data.subjects || [];

@@ -8,6 +8,10 @@ const CollegeController=require('../Controllers/CollegeController')
 const PUCollegeController = require('../Controllers/PuCollegeController')
 const TuitionCoachingController=require('../Controllers/TuitionCoachingController')
 const TeacherController=require('../Controllers/TeachersController')
+const RegistrationController = require('../Controllers/RegistrationControleer');
+const AdminRegistrationController = require('../Controllers/AdminRegController');
+
+
 
 router.post('/login', AuthController.loginAdmin);
 
@@ -19,6 +23,7 @@ router.get('/admin/dashboard', verifyAdmin, (req, res) => {
   });
 });
 
+//schools
 router.post('/admin/addschools', 
 upload.fields([
   { name: 'schoolImage', maxCount: 1 },
@@ -42,6 +47,7 @@ router.get('/schools/:schoolId/reviews', schoolController.getReviews);
 router.put('/schools/:schoolId/reviews/:reviewId/like', schoolController.likeReview);
 router.put('/schools/:schoolId/reviews/:reviewId/dislike', schoolController.dislikeReview);
 
+//colleges
 router.post('/admin/addcolleges', 
   upload.fields([
     { name: 'collegeImage', maxCount: 1 },
@@ -72,7 +78,7 @@ router.get('/colleges/:collegeId/reviews', CollegeController.getReviews);
 router.put('/colleges/:collegeId/reviews/:reviewId/like', CollegeController.likeReview);
 router.put('/colleges/:collegeId/reviews/:reviewId/dislike', CollegeController.dislikeReview);
 
-// PU College routes
+// PU Colleges 
 router.post('/admin/addpucolleges', 
   
   upload.fields([
@@ -107,7 +113,7 @@ router.put('/pucolleges/:puCollegeId/reviews/:reviewId/like', PUCollegeControlle
 router.put('/pucolleges/:puCollegeId/reviews/:reviewId/dislike', PUCollegeController.dislikeReview);
 
 
-// Tuition/Coaching Center routes
+// Tuition/Coaching Centers
 router.post('/admin/addtuitioncoaching', 
   upload.fields([
     { name: 'centerImage', maxCount: 1 },
@@ -137,6 +143,7 @@ router.get('/tuitioncoaching/:tuitionCoachingId/reviews', TuitionCoachingControl
 router.put('/tuitioncoaching/:tuitionCoachingId/reviews/:reviewId/like', TuitionCoachingController.likeReview);
 router.put('/tuitioncoaching/:tuitionCoachingId/reviews/:reviewId/dislike', TuitionCoachingController.dislikeReview);
 
+//Teachers
 router.post('/admin/addteachers', upload.fields([
   { name: 'profileImage', maxCount: 1 }
 ]), TeacherController.addTeacher);
@@ -163,5 +170,26 @@ router.put('/teachers/professional/:teacherId/reviews/:reviewId/like', TeacherCo
 router.put('/teachers/personal/:teacherId/reviews/:reviewId/like', TeacherController.likePersonalReview);
 router.put('/teachers/professional/:teacherId/reviews/:reviewId/dislike', TeacherController.dislikeProfessionalReview);
 router.put('/teachers/personal/:teacherId/reviews/:reviewId/dislike', TeacherController.dislikePersonalReview);
+
+router.post('/submit', 
+  upload.fields([
+    { name: 'registrationCertificate', maxCount: 1 },
+    { name: 'affiliationCertificate', maxCount: 1 },
+    { name: 'qualificationCertificates', maxCount: 10 },
+    { name: 'idProof', maxCount: 1 },
+    { name: 'profileImage', maxCount: 1 },
+    { name: 'photos', maxCount: 6 },
+    { name: 'otherDocuments', maxCount: 10 }
+  ]), 
+  RegistrationController.submitRegistration
+);
+
+router.get('/status/:id', RegistrationController.getRegistrationStatus);
+
+router.get('/admin/pending',  AdminRegistrationController.getPendingRegistrations);
+router.get('/admin/all', AdminRegistrationController.getAllRegistrations);
+router.get('/admin/registrations/:id', AdminRegistrationController.getRegistrationById); 
+router.put('/admin/approve/:id', AdminRegistrationController.approveRegistration);
+router.put('/admin/reject/:id', AdminRegistrationController.rejectRegistration);
 
 module.exports = router;

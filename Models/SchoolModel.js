@@ -3,6 +3,7 @@ class SchoolModel {
     this.name = data.name;
     this.typeOfSchool = data.typeOfSchool;
     this.affiliation = data.affiliation;
+    this.affiliationNumber = data.affiliationNumber || '';
     this.grade = data.grade;
     this.ageForAdmission = data.ageForAdmission;
     this.language = data.language;

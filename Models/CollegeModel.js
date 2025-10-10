@@ -3,6 +3,7 @@ class CollegeModel {
     this.name = data.name;
     this.typeOfCollege = data.typeOfCollege;
     this.affiliation = data.affiliation;
+    this.affiliationNumber = data.affiliationNumber || '';
     this.accreditation = data.accreditation;
     this.coursesOffered = data.coursesOffered || [];
     this.duration = data.duration;
