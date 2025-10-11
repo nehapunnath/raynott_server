@@ -11,6 +11,7 @@ const TeacherController=require('../Controllers/TeachersController')
 const RegistrationController = require('../Controllers/RegistrationControleer');
 const AdminRegistrationController = require('../Controllers/AdminRegController');
 const BestSellersController= require('../Controllers/BestSellers');
+const BookDemoController = require('../Controllers/BookaDemoController');
 
 
 
@@ -195,5 +196,8 @@ router.put('/admin/approve/:id', AdminRegistrationController.approveRegistration
 router.put('/admin/reject/:id', AdminRegistrationController.rejectRegistration);
 
 router.get('/bestsellers', BestSellersController.getBestSellers)
+
+router.post('/book-demo', BookDemoController.bookDemo);
+router.get('/book-demo',  BookDemoController.getBookings);
 
 module.exports = router;
