@@ -2,22 +2,7 @@ const admin = require('firebase-admin');
 const { auth } = require('../firebase');
 const { signInWithEmailAndPassword } = require('firebase/auth');
 
-// Initialize Firebase Admin SDK
-// const serviceAccount = require('../service-account-key.json');
 
-// admin.initializeApp({
-//   credential: admin.credential.cert(serviceAccount),
-//   databaseURL: "https://raynott-98db5.firebaseio.com"
-// });
-
-// const admin = require('firebase-admin');
-
-// const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-
-// admin.initializeApp({
-//   credential: admin.credential.cert(serviceAccount),
-//   databaseURL: process.env.FIREBASE_DATABASE_URL
-// });
 
 
 class AuthModel {
